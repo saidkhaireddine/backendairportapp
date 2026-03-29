@@ -86,12 +86,28 @@ class NotificationService {
    * Send chat message notification to receiver
    */
   static async notifyChatMessage(receiverId, messageData) {
+    // One notification per conversation (booking or request). Replace older notification with the latest message.
+    const filter = {
+      user_id: receiverId,
+      type: this.TYPES.CHAT_MESSAGE,
+    };
+
+    if (messageData.booking_id) {
+      filter["payload.booking_id"] = messageData.booking_id;
+    }
+    if (messageData.request_id) {
+      filter["payload.request_id"] = messageData.request_id;
+    }
+
+    // Remove any previous notification for this conversation so only the most recent message shows.
+    await Notification.deleteMany(filter);
+
     return await this.createAndInvalidateCache(receiverId, {
       user_id: receiverId,
       type: this.TYPES.CHAT_MESSAGE,
       payload: {
         booking_id: messageData.booking_id,
-        request_id: messageData.request_id, // Added this field
+        request_id: messageData.request_id,
         sender_id: messageData.sender_id,
         sender_name: messageData.sender_name,
         sender_role: messageData.sender_role,
